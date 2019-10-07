@@ -31,7 +31,6 @@ int main(int argc, char **argv)
     int out = 1;
     int count = 1;
     for (in = 1; in < argc; in++)
-    {
       if (strcmp(argv[in], "-slice") == 0 && ++in < argc)
       {
         char *pc;
@@ -47,7 +46,6 @@ int main(int argc, char **argv)
         argv[out++] = argv[in];
         count++;
       }
-    }
     argc = count;
   }
 

@@ -110,6 +110,14 @@ void nWaitCondition(nCondition cond);    /* operacion Wait */
 void nSignalCondition(nCondition cond);  /* operacion Signal */
 
 /*************************************************************
+ * Compartir datos
+ *************************************************************/
+
+void nShare(char* data);
+char *nRequest(nTask t, int timeout);
+void nRelease(nTask t);
+
+/*************************************************************
  * E/S basica
  *************************************************************/
 

@@ -1,0 +1,25 @@
+{
+  "tasks": [
+    {
+      "type": "shell",
+      "label": "gcc build active file",
+      "command": "make",
+      "args": [],
+      "options": {
+        "cwd": "${workspaceFolder}/ex-share"
+      }
+    },
+    {
+      "type": "shell",
+      "label": "clean",
+      "command": "make",
+      "args": [
+        "clean"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      }
+    }
+  ],
+  "version": "2.0.0"
+}

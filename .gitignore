@@ -108,4 +108,18 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
+### Compressed ###
+*.7z
+*.deb
+*.gz
+*.pkg
+*.rar
+*.rpm
+*.sit
+*.sitx
+*.tar
+*.zip
+*.zipx
+*.tgz
+
 # End of https://www.gitignore.io/api/c,linux,windows,visualstudiocode
