@@ -2,14 +2,16 @@
  * Implementation of a concurrent sharing system using low level synchronization tools.
  * 
  * @author Ignacio Slater Muñoz
- * @version 1.0b2
+ * @version 1.0b3
  * @since 1.0
  */
+#include <stdarg.h>
 #include "nSysimp.h"
 #include <nSystem.h>
-#include <stdarg.h>
+#include "fifoqueues.h"
 
 char *message;
+FifoQueue pendingRequests;
 
 char *nRequest(nTask t, int timeout)
 {
@@ -34,6 +36,12 @@ void nShare(char *data)
 {
   START_CRITICAL();
   nPrintf("Entered critical section from nShare\n");
+  if (!LengthFifoQueue(pendingRequests))
+  {
+    return;
+  }
+  // TODO: esperar hasta que todas las tareas pendientes notifiquen
+  // TODO: desbloquear tareas que esperan y retorna 
   END_CRITICAL();
   nPrintf("Exited critical section from nShare\n");
 }
