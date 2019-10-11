@@ -2,16 +2,13 @@
  * Implementation of a concurrent sharing system using low level synchronization tools.
  * 
  * @author Ignacio Slater Muñoz
- * @version 1.0b5
+ * @version 1.0b6
  * @since 1.0
  */
 #include <stdarg.h>
 #include "nSysimp.h"
 #include <nSystem.h>
 #include "fifoqueues.h"
-
-// All possible characters of a base-64 string.
-const char *b64chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 char *message;
 int pendingRequests = 0;
@@ -58,11 +55,13 @@ void nShare(char *data)
   START_CRITICAL();
   nPrintf("Entered critical section from nShare\n");
   isSharing = TRUE;
-  nPrintf("0x%s started sharing %s\n", current_task, data);
-  // while (!EmptyQueue(current_task->send_queue))
-  // {
-  //   /* code */
-  // }
+  nPrintf("0x%X started sharing %s\n", current_task, data);
+  nPrintf("Looking for requests\n");
+  while (!EmptyQueue(current_task->send_queue))
+  {
+    nTask *requestingTask = GetTask(current_task->send_queue);
+    nPrintf("Answering request for task 0x%X\n");
+  }
   isSharing = FALSE;
   nPrintf("0x%X finished sharing\n", current_task);
   END_CRITICAL();
