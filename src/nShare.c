@@ -10,6 +10,20 @@
 #include <nSystem.h>
 #include "fifoqueues.h"
 
+/** 
+ * Possible status of a request or share task.
+ * 
+ * WAIT_SHARE
+ *    the task is waiting indefinitely for another to call nShare
+ * WAIT_SHARE_TIMEOUT
+ *    the task is waiting for another one to call nShare with a timeout
+*/
+typedef enum shareStatus
+{
+  WAIT_SHARE,
+  WAIT_SHARE_TIMEOUT
+} ShareStatus;
+
 char *message;
 int pendingRequests = 0;
 int isSharing = FALSE;
@@ -32,11 +46,24 @@ char *nRequest(nTask t, int timeout)
   START_CRITICAL();
   nPrintf("%s[nRequest]   Entered critical section.\n", preamble);
   pendingRequests++;
-  nPrintf("%s[nRequest]   Pending requests: %d\n",preamble, pendingRequests);
+  nPrintf("%s[nRequest]   Pending requests: %d\n", preamble, pendingRequests);
   PutTask(t->send_queue, current_task);
-  nPrintf("%s[nRequest]   0x%X's timeout: %d\n",preamble, current_task, timeout);
-  
-  nPrintf("%s[nRequest]   Added 0x%X to 0x%X's send queue\n",preamble, current_task, t);
+  nPrintf("%s[nRequest]   0x%X's timeout: %d\n", preamble, current_task, timeout);
+  if (timeout > 0)
+  {
+    current_task->status = WAIT_SHARE_TIMEOUT;
+    ProgramTask(timeout);
+    nPrintf("%s[nRequest]   0x%X started a request with timeout: %d\n", preamble,
+            current_task, timeout);
+  }
+  else
+  {
+    current_task->status = WAIT_SHARE;
+    nPrintf("%s[nRequest]   0x%X started a request without timeout\n", preamble,
+            current_task);
+  }
+  ResumeNextReadyTask();
+  nPrintf("%s[nRequest]   Added 0x%X to 0x%X's send queue\n", preamble, current_task, t);
   END_CRITICAL();
   nPrintf("%s[nRequest]   Exited critical section.\n", preamble);
   return t->send.msg;
@@ -67,7 +94,7 @@ void nShare(char *data)
     nPrintf("%s[nShare]   Answering request for task 0x%X\n", preamble, requestingTask);
   }
   isSharing = FALSE;
-  nPrintf("%s[nShare]   0x%X finished sharing\n",preamble, current_task);
+  nPrintf("%s[nShare]   0x%X finished sharing\n", preamble, current_task);
   END_CRITICAL();
   nPrintf("%s[nShare]   Exited critical section.\n", preamble);
 }
