@@ -10,6 +10,9 @@
 #include <nSystem.h>
 #include "fifoqueues.h"
 
+// All possible characters of a base-64 string.
+const char *b64chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
 char *message;
 int pendingRequests = 0;
 int isSharing = FALSE;
@@ -32,7 +35,7 @@ char *nRequest(nTask t, int timeout)
   nPrintf("Entered nRequest critical section.\n");
   pendingRequests++;
   nPrintf("Pending requests: %d\n", pendingRequests);
-  
+
   END_CRITICAL();
   nPrintf("Exited nRequest critical section.\n");
   return t->send.msg;
@@ -44,9 +47,8 @@ void nRelease(nTask t)
 }
 
 /**
- * Ofrece datos para compartir.
- * Cuando se llama a esta función se desbloquean todos los procesos que esperaban datos.
- * 
+ * Shares data.
+ * When this function is called all the processes that made requests are unlocked.
  * 
  * @param data
  *    los datos que serán compartidos
@@ -55,11 +57,14 @@ void nShare(char *data)
 {
   START_CRITICAL();
   nPrintf("Entered critical section from nShare\n");
-  while (!EmptyQueue(current_task->send_queue))
-  {
-    /* code */
-  }
-  
+  isSharing = TRUE;
+  nPrintf("0x%s started sharing %s\n", current_task, data);
+  // while (!EmptyQueue(current_task->send_queue))
+  // {
+  //   /* code */
+  // }
+  isSharing = FALSE;
+  nPrintf("0x%X finished sharing\n", current_task);
   END_CRITICAL();
   nPrintf("Exited critical section from nShare\n");
 }
