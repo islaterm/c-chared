@@ -2,7 +2,7 @@
  * Implementation of a concurrent sharing system using low level synchronization tools.
  * 
  * @author Ignacio Slater Muñoz
- * @version 1.0b4
+ * @version 1.0b5
  * @since 1.0
  */
 #include <stdarg.h>
@@ -11,18 +11,36 @@
 #include "fifoqueues.h"
 
 char *message;
-FifoQueue pendingRequests;
+int pendingRequests = 0;
+int isSharing = FALSE;
 
-void println();
+/**
+ * Requests data from a task.
+ * If there is an active share task, then the request returns its answer, otherwise it
+ * waits until a task shares information or for a certain amount of time elapses.
+ * 
+ * @param t
+ *    the task that will share information.
+ * @param timeout
+ *    the time the request waits for a respo nse.
+*/
 char *nRequest(nTask t, int timeout)
 {
-  nFatalError("nRequest", "%s\n", "Not implemented");
-  return "";
+  // char *data = NULL;
+  nPrintf("Pending requests: %d\n", pendingRequests);
+  START_CRITICAL();
+  nPrintf("Entered nRequest critical section.\n");
+  pendingRequests++;
+  nPrintf("Pending requests: %d\n", pendingRequests);
+  
+  END_CRITICAL();
+  nPrintf("Exited nRequest critical section.\n");
+  return t->send.msg;
 }
 
 void nRelease(nTask t)
 {
-  nFatalError("nRelease not implemented", "%s");
+  nFatalError("nRelease", "%s", "not implemented\n");
 }
 
 /**
@@ -37,25 +55,11 @@ void nShare(char *data)
 {
   START_CRITICAL();
   nPrintf("Entered critical section from nShare\n");
-  if (QueueLength(current_task->send_queue) == 0)
-  {
-    nPrintf("There are no pending requests, returning.\n");
-    return;
-  }
-  // Coloca la tarea actual al final de la cola
-  PushTask(ready_queue, current_task);
-  nPrintf("Located share task at the end of the send queue");
   while (!EmptyQueue(current_task->send_queue))
   {
-    nPrintf("nShare is waiting for pending requests to finish.\n");
-    nTask waitingTask = GetTask(current_task->send_queue);
-    waitingTask->status = READY;
-    PutTask(ready_queue, waitingTask);
-    nPrintf("Located task %s in the ready queue.\n");
+    /* code */
   }
-  nPrintf("All requests have been answered.\n"); 
-  ResumeNextReadyTask();
+  
   END_CRITICAL();
   nPrintf("Exited critical section from nShare\n");
 }
-
