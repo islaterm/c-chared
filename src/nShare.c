@@ -2,7 +2,7 @@
  * Implementation of a concurrent sharing system using low level synchronization tools.
  * 
  * @author Ignacio Slater Muñoz
- * @version 1.0b7
+ * @version 1.0b8
  * @since 1.0
  */
 #include <stdarg.h>
@@ -34,6 +34,8 @@ char *nRequest(nTask t, int timeout)
   pendingRequests++;
   nPrintf("%s[nRequest]   Pending requests: %d\n",preamble, pendingRequests);
   PutTask(t->send_queue, current_task);
+  nPrintf("%s[nRequest]   0x%X's timeout: %d\n",preamble, current_task, timeout);
+  
   nPrintf("%s[nRequest]   Added 0x%X to 0x%X's send queue\n",preamble, current_task, t);
   END_CRITICAL();
   nPrintf("%s[nRequest]   Exited critical section.\n", preamble);
