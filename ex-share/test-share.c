@@ -2,7 +2,7 @@
 
 /* Ver el nMain al final */
 
-int verbose = TRUE;
+int verbose = FALSE;
 
 typedef struct
 {
