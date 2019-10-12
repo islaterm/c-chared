@@ -2,7 +2,7 @@
  * Implementation of a concurrent sharing system using low level synchronization tools.
  * 
  * @author Ignacio Slater Muñoz
- * @version 1.0b9
+ * @version 1.0b10
  * @since 1.0
  */
 #include <stdarg.h>
@@ -21,14 +21,17 @@
 typedef enum shareStatus
 {
   WAIT_SHARE,
-  WAIT_SHARE_TIMEOUT
+  WAIT_SHARE_TIMEOUT,
+  WAIT_RELEASE
 } ShareStatus;
 
+const char
+    *DEBUG = "DEBUG   ",
+    *ERROR = "ERROR   ";
+    
 char *message;
 int pendingRequests = 0;
 int isSharing = FALSE;
-char *preamble = "DEBUG   ";
-
 /**
  * Requests data from a task.
  * If there is an active share task, then the request returns its answer, otherwise it
@@ -41,43 +44,44 @@ char *preamble = "DEBUG   ";
 */
 char *nRequest(nTask t, int timeout)
 {
-  nPrintf("%s[nRequest]   Pending requests: %d\n", preamble, pendingRequests);
+  nPrintf("%s[nRequest]   Pending requests: %d\n", DEBUG, pendingRequests);
   START_CRITICAL();
 
-  nPrintf("%s[nRequest]   Entered critical section.\n", preamble);
+  nPrintf("%s[nRequest]   Entered critical section.\n", DEBUG);
   pendingRequests++;
-  nPrintf("%s[nRequest]   Pending requests: %d\n", preamble, pendingRequests);
+  nPrintf("%s[nRequest]   Pending requests: %d\n", DEBUG, pendingRequests);
 
   PutTask(t->send_queue, current_task);
-  nPrintf("%s[nRequest]   0x%X's timeout: %d\n", preamble, current_task, timeout);
+  nPrintf("%s[nRequest]   0x%X's timeout: %d\n", DEBUG, current_task, timeout);
   if (timeout > 0)
   {
     current_task->status = WAIT_SHARE_TIMEOUT;
     ProgramTask(timeout);
-    nPrintf("%s[nRequest]   0x%X started a request with timeout: %d\n", preamble,
+    nPrintf("%s[nRequest]   0x%X started a request with timeout: %d\n", DEBUG,
             current_task, timeout);
   }
   else
   {
     current_task->status = WAIT_SHARE;
-    nPrintf("%s[nRequest]   0x%X started a request without timeout\n", preamble,
+    nPrintf("%s[nRequest]   0x%X started a request without timeout\n", DEBUG,
             current_task);
   }
   ResumeNextReadyTask();
-  nPrintf("%s[nRequest]   Added 0x%X to 0x%X's send queue\n", preamble, current_task, t);
+  nPrintf("%s[nRequest]   Added 0x%X to 0x%X's send queue\n", DEBUG, current_task, t);
   pendingRequests--;
-  nPrintf("%s[nRequest]   Pending requests: %d\n", preamble, pendingRequests);
+  nPrintf("%s[nRequest]   Pending requests: %d\n", DEBUG, pendingRequests);
 
   END_CRITICAL();
-  nPrintf("%s[nRequest]   Exited critical section.\n", preamble);
-  nPrintf("%s[nRequest]   0x%X received the following answer: %X.\n", preamble,
+  nPrintf("%s[nRequest]   Exited critical section.\n", DEBUG);
+  nPrintf("%s[nRequest]   0x%X received the following answer: %X.\n", DEBUG,
           current_task, current_task->send.msg);
   return current_task->send.msg;
 }
 
 void nRelease(nTask t)
 {
-  nFatalError("nRelease", "%s", "not implemented\n");
+  const char *context = "[nRelease]   ";
+  nPrintf("%s%sfunction not implemented\n", ERROR, context);
 }
 
 /**
@@ -90,28 +94,33 @@ void nRelease(nTask t)
 void nShare(char *data)
 {
   START_CRITICAL();
-  nPrintf("%s[nShare]   Entered critical section.\n", preamble);
-  nPrintf("%s[nShare]   0x%X started sharing %X\n", preamble, current_task, data);
-  nPrintf("%s[nShare]   Looking for requests\n", preamble);
+  char *context = "[nShare]     ";
+  nPrintf("%s%sEntered critical section.\n", DEBUG, context);
+  nPrintf("%s%s0x%X started sharing %X\n", DEBUG, context, current_task, data);
+  nPrintf("%s%sLooking for requests\n", DEBUG, context);
   while (!EmptyQueue(current_task->send_queue))
   {
     nTask requestingTask = GetTask(current_task->send_queue);
     if (requestingTask->status == WAIT_SHARE || requestingTask->status == WAIT_SHARE_TIMEOUT)
     {
-      nPrintf("%s[nShare]   Answering request for task 0x%X\n", preamble, requestingTask);
+      current_task->status = nPrintf("%s%sAnswering request for task 0x%X\n", DEBUG,
+                                     context, requestingTask);
       if (requestingTask->status == WAIT_SHARE_TIMEOUT)
       {
         CancelTask(requestingTask);
-        nPrintf("%s[nShare]   Canceling task 0x%X because it reached it's timeout\n",
-                preamble, requestingTask);
+        nPrintf("%s%sCanceling task 0x%X because it reached it's timeout\n",
+                DEBUG, context, requestingTask);
       }
       requestingTask->status = READY;
+      requestingTask->send.msg = data;
       PushTask(ready_queue, requestingTask);
-      nPrintf("%s[nShare]   Added 0x%X to the ready queue\n", preamble, requestingTask);
+      nPrintf("%s%sAdded 0x%X to the ready queue\n", DEBUG, context, requestingTask);
     }
-    requestingTask->send.msg = data;
+    current_task->status = WAIT_RELEASE;
+    nPrintf("%s%sWaiting for all requests to release the data\n", DEBUG, context);
+    ResumeNextReadyTask();
   }
-  nPrintf("%s[nShare]   0x%X finished sharing\n", preamble, current_task);
+  nPrintf("%s%s0x%X finished sharing\n", DEBUG, context, current_task);
   END_CRITICAL();
-  nPrintf("%s[nShare]   Exited critical section.\n", preamble);
+  nPrintf("%s%sExited critical section.\n", DEBUG, context);
 }
