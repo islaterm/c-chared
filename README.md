@@ -1,5 +1,10 @@
 # CShared
 
+_CShared_ is an implementation of a concurrent message sharing system, based on _nSystem_, during the course of Operating Systems on the Spring semester of 2019.
+
+## nSystem
+Below is the original documentation of _nSystem_ written by Luis Mateu:
+
 Este es nSystem2001
 
 Esta distribucion viene con los makefiles preparados para Linux,
