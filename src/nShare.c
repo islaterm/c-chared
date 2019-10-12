@@ -2,7 +2,7 @@
  * Implementation of a concurrent sharing system using low level synchronization tools.
  * 
  * @author Ignacio Slater Muñoz
- * @version 1.0b10
+ * @version 1.0b11
  * @since 1.0
  */
 #include <stdarg.h>
@@ -28,7 +28,7 @@ typedef enum shareStatus
 const char
     *DEBUG = "DEBUG   ",
     *ERROR = "ERROR   ";
-    
+
 char *message;
 int pendingRequests = 0;
 int isSharing = FALSE;
@@ -44,44 +44,54 @@ int isSharing = FALSE;
 */
 char *nRequest(nTask t, int timeout)
 {
-  nPrintf("%s[nRequest]   Pending requests: %d\n", DEBUG, pendingRequests);
   START_CRITICAL();
+  const char *context = "[nRequest]   ";
+  nPrintf("%s%sPending requests: %d\n", DEBUG, context, pendingRequests);
 
-  nPrintf("%s[nRequest]   Entered critical section.\n", DEBUG);
+  nPrintf("%s%sEntered critical section.\n", DEBUG, context);
   pendingRequests++;
-  nPrintf("%s[nRequest]   Pending requests: %d\n", DEBUG, pendingRequests);
+  nPrintf("%s%sPending requests: %d\n", DEBUG, context, pendingRequests);
 
   PutTask(t->send_queue, current_task);
-  nPrintf("%s[nRequest]   0x%X's timeout: %d\n", DEBUG, current_task, timeout);
+  nPrintf("%s%s0x%X's timeout: %d\n", DEBUG, context, current_task, timeout);
   if (timeout > 0)
   {
     current_task->status = WAIT_SHARE_TIMEOUT;
     ProgramTask(timeout);
-    nPrintf("%s[nRequest]   0x%X started a request with timeout: %d\n", DEBUG,
+    nPrintf("%s%s0x%X started a request with timeout: %d\n", DEBUG, context,
             current_task, timeout);
   }
   else
   {
     current_task->status = WAIT_SHARE;
-    nPrintf("%s[nRequest]   0x%X started a request without timeout\n", DEBUG,
+    nPrintf("%s%s0x%X started a request without timeout\n", DEBUG, context,
             current_task);
   }
   ResumeNextReadyTask();
-  nPrintf("%s[nRequest]   Added 0x%X to 0x%X's send queue\n", DEBUG, current_task, t);
+  nPrintf("%s%sAdded 0x%X to 0x%X's send queue\n", DEBUG, context, current_task, t);
   pendingRequests--;
-  nPrintf("%s[nRequest]   Pending requests: %d\n", DEBUG, pendingRequests);
+  nPrintf("%s%sPending requests: %d\n", DEBUG, context, pendingRequests);
 
   END_CRITICAL();
-  nPrintf("%s[nRequest]   Exited critical section.\n", DEBUG);
-  nPrintf("%s[nRequest]   0x%X received the following answer: %X.\n", DEBUG,
+  nPrintf("%s%sExited critical section.\n", DEBUG, context);
+  nPrintf("%s%s0x%X received the following answer: %X.\n", DEBUG, context,
           current_task, current_task->send.msg);
   return current_task->send.msg;
 }
 
 void nRelease(nTask t)
 {
+  START_CRITICAL();
   const char *context = "[nRelease]   ";
-  nPrintf("%s%sfunction not implemented\n", ERROR, context);
+  nPrintf("%s%sEntered critical section.\n", DEBUG, context);
+
+  if (t->status != WAIT_RELEASE)
+  {
+    nPrintf("%s%s0x%X is not waiting for a release.\n", ERROR, context, t);
+  }
+  
+  END_CRITICAL();
+  nPrintf("%s%sExited critical section.\n", DEBUG, context);
 }
 
 /**
