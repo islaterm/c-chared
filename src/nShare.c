@@ -2,7 +2,7 @@
  * Implementation of a concurrent sharing system using low level synchronization tools.
  * 
  * @author Ignacio Slater Muñoz
- * @version 1.0b11
+ * @version 1.0b12
  * @since 1.0
  */
 #include <stdarg.h>
@@ -30,8 +30,10 @@ const char
     *ERROR = "ERROR   ";
 
 char *message;
-int pendingRequests = 0;
-int isSharing = FALSE;
+int
+    pendingRequests = 0,
+    pendingReleases = 0;
+
 /**
  * Requests data from a task.
  * If there is an active share task, then the request returns its answer, otherwise it
@@ -66,11 +68,12 @@ char *nRequest(nTask t, int timeout)
     current_task->status = WAIT_SHARE;
     nPrintf("%s%s0x%X started a request without timeout\n", DEBUG, context,
             current_task);
+    // FIXME: Error Fatal en la rutina ResumeNextReadyTask y la tarea
+    // sin nombre (estado READY)
+    // Por que' la tarea que corria estaba ``ready''?
   }
   ResumeNextReadyTask();
   nPrintf("%s%sAdded 0x%X to 0x%X's send queue\n", DEBUG, context, current_task, t);
-  pendingRequests--;
-  nPrintf("%s%sPending requests: %d\n", DEBUG, context, pendingRequests);
 
   END_CRITICAL();
   nPrintf("%s%sExited critical section.\n", DEBUG, context);
@@ -79,6 +82,12 @@ char *nRequest(nTask t, int timeout)
   return current_task->send.msg;
 }
 
+/** 
+ * Notifies that the current task finished using the data.
+ * 
+ * @param t
+ *    the task to be notified
+*/
 void nRelease(nTask t)
 {
   START_CRITICAL();
@@ -89,7 +98,19 @@ void nRelease(nTask t)
   {
     nPrintf("%s%s0x%X is not waiting for a release.\n", ERROR, context, t);
   }
-  
+  PushTask(ready_queue, current_task);
+  nPrintf("%s%sAdded 0x%X to the ready queue\n", DEBUG, context, current_task);
+
+  if (--pendingRequests == 0)
+  {
+    t->status = READY;
+    PushTask(ready_queue, t);
+    nPrintf("%s%sAdded 0x%X to the ready queue\n", DEBUG, context, t);
+  }
+  nPrintf("%s%sPending requests: %d\n", DEBUG, context, pendingRequests);
+
+  ResumeNextReadyTask();
+
   END_CRITICAL();
   nPrintf("%s%sExited critical section.\n", DEBUG, context);
 }
@@ -126,6 +147,10 @@ void nShare(char *data)
       PushTask(ready_queue, requestingTask);
       nPrintf("%s%sAdded 0x%X to the ready queue\n", DEBUG, context, requestingTask);
     }
+  }
+  nPrintf("%s%sPending requests: %d\n", DEBUG, context, pendingRequests);
+  while (pendingRequests)
+  {
     current_task->status = WAIT_RELEASE;
     nPrintf("%s%sWaiting for all requests to release the data\n", DEBUG, context);
     ResumeNextReadyTask();
