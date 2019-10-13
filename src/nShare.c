@@ -2,7 +2,7 @@
  * Implementation of a concurrent sharing system using low level synchronization tools.
  * 
  * @author Ignacio Slater Muñoz
- * @version 1.0b13
+ * @version 1.0b14
  * @since 1.0
  */
 #include <stdarg.h>
@@ -32,12 +32,13 @@ static int
 */
 char *nRequest(nTask t, int timeout)
 {
-  START_CRITICAL();
   const char *context = "[nRequest]   ";
-  nSetTaskName("REQUEST %d", nRequestCounter++);
-  nPrintf("\n%s%sPending requests: %d\n", DEBUG, context, pendingRequests);
+  START_CRITICAL();
   nPrintf("%s%sEntered critical section.\n", DEBUG, context);
+  
+  nSetTaskName("REQUEST %d", nRequestCounter++);
   pendingRequests++;
+  
   nPrintf("%s%sPending requests: %d\n", DEBUG, context, pendingRequests);
 
   if (t->status == WAIT_REPLY)
@@ -50,20 +51,14 @@ char *nRequest(nTask t, int timeout)
   }
   else
   {
-    PushTask(t->send_queue, nCurrentTask());
-    nPrintf("%s%sAdded %s to %s's send queue\n", DEBUG, context, nGetTaskName(),
-            t->taskname);
     nPrintf("%s%s%s's timeout: %d\n", DEBUG, context, nGetTaskName(), timeout);
     if (timeout > 0)
     {
       nCurrentTask()->status = WAIT_SEND_TIMEOUT;
-      // FIXME: task shouldn't be in a queue yet
-      // Error Fatal en la rutina ProgramTask y la tarea
-      // REQUEST 7 (estado WAIT_SEND_TIMEOUT)
-      // La tarea ya estaba en alguna cola
       ProgramTask(timeout);
       nPrintf("%s%s%s started a request with timeout: %d\n", DEBUG, context, nGetTaskName(),
               timeout);
+      // FIXME: Current task msg is not updated by nShare
     }
     else
     {
@@ -72,10 +67,13 @@ char *nRequest(nTask t, int timeout)
               nGetTaskName());
       nPrintf("%s%s%s's status: %d\n", DEBUG, context, nGetTaskName(),
               nCurrentTask()->status);
+      PushTask(t->send_queue, nCurrentTask());
+      nPrintf("%s%sAdded %s to %s's send queue\n", DEBUG, context, nGetTaskName(),
+              t->taskname);
     }
-    nPrintf("%s%s%s's status: %d\n", DEBUG, context, nGetTaskName(),
-            nCurrentTask()->status);
-    nPrintf("%s%s Next task: %s\n", DEBUG, context, nGetTaskName());
+    // nPrintf("%s%s%s's status: %d\n", DEBUG, context, nGetTaskName(),
+    //         nCurrentTask()->status);
+    // nPrintf("%s%sNext task: %s\n", DEBUG, context, nGetTaskName());
 
     ResumeNextReadyTask();
   }
