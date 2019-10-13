@@ -2,28 +2,13 @@
  * Implementation of a concurrent sharing system using low level synchronization tools.
  * 
  * @author Ignacio Slater Muñoz
- * @version 1.0b12
+ * @version 1.0b13
  * @since 1.0
  */
 #include <stdarg.h>
 #include "nSysimp.h"
 #include <nSystem.h>
 #include "fifoqueues.h"
-
-/** 
- * Possible status of a request or share task.
- * 
- * WAIT_SHARE
- *    the task is waiting indefinitely for another to call nShare
- * WAIT_SHARE_TIMEOUT
- *    the task is waiting for another one to call nShare with a timeout
-*/
-typedef enum shareStatus
-{
-  WAIT_SHARE,
-  WAIT_SHARE_TIMEOUT,
-  WAIT_RELEASE
-} ShareStatus;
 
 static const char
     *DEBUG = "DEBUG   ",
@@ -55,7 +40,7 @@ char *nRequest(nTask t, int timeout)
   pendingRequests++;
   nPrintf("%s%sPending requests: %d\n", DEBUG, context, pendingRequests);
 
-  if (t->status == WAIT_RELEASE)
+  if (t->status == WAIT_REPLY)
   {
     nCurrentTask()->send.msg = t->send.msg;
     nPrintf("%s%s%s was active, %s returned %X\n", DEBUG, context, t->taskname,
@@ -71,20 +56,27 @@ char *nRequest(nTask t, int timeout)
     nPrintf("%s%s%s's timeout: %d\n", DEBUG, context, nGetTaskName(), timeout);
     if (timeout > 0)
     {
-      nCurrentTask()->status = WAIT_SHARE_TIMEOUT;
+      nCurrentTask()->status = WAIT_SEND_TIMEOUT;
+      // FIXME: task shouldn't be in a queue yet
+      // Error Fatal en la rutina ProgramTask y la tarea
+      // REQUEST 7 (estado WAIT_SEND_TIMEOUT)
+      // La tarea ya estaba en alguna cola
       ProgramTask(timeout);
       nPrintf("%s%s%s started a request with timeout: %d\n", DEBUG, context, nGetTaskName(),
               timeout);
     }
     else
     {
-      nCurrentTask()->status = WAIT_SHARE;
-      nPrintf("%s%s%s started a request without timeout\n", DEBUG, context, nGetTaskName());
+      nCurrentTask()->status = WAIT_SEND;
+      nPrintf("%s%s%s started a request without timeout\n", DEBUG, context,
+              nGetTaskName());
+      nPrintf("%s%s%s's status: %d\n", DEBUG, context, nGetTaskName(),
+              nCurrentTask()->status);
     }
-    // FIXME: Running task shouldn't be ready
-    // Error Fatal en la rutina ResumeNextReadyTask y la tarea
-    // REQUEST 6 (estado READY)
-    // Por que' la tarea que corria estaba ``ready''?
+    nPrintf("%s%s%s's status: %d\n", DEBUG, context, nGetTaskName(),
+            nCurrentTask()->status);
+    nPrintf("%s%s Next task: %s\n", DEBUG, context, nGetTaskName());
+
     ResumeNextReadyTask();
   }
 
@@ -111,7 +103,7 @@ void nRelease(nTask t)
   const char *context = "[nRelease]   ";
   nPrintf("\n%s%sEntered critical section.\n", DEBUG, context);
 
-  if (t->status != WAIT_RELEASE)
+  if (t->status != WAIT_REPLY)
   {
     nPrintf("%s%s%s is not waiting for a release.\n", ERROR, context, t->taskname);
   }
@@ -129,7 +121,7 @@ void nRelease(nTask t)
   ResumeNextReadyTask();
 
   END_CRITICAL();
-  nPrintf("%s%sExited critical section.\n", DEBUG, context);
+  nPrintf("%s%sExited critical section.\n\n", DEBUG, context);
 }
 
 /**
@@ -152,11 +144,11 @@ void nShare(char *data)
   while (!EmptyQueue(nCurrentTask()->send_queue))
   {
     nTask requestingTask = GetTask(nCurrentTask()->send_queue);
-    if (requestingTask->status == WAIT_SHARE || requestingTask->status == WAIT_SHARE_TIMEOUT)
+    if (requestingTask->status == WAIT_SEND || requestingTask->status == WAIT_SEND_TIMEOUT)
     {
       nCurrentTask()->status = nPrintf("%s%sAnswering request for task %s\n", DEBUG,
                                        context, requestingTask->taskname);
-      if (requestingTask->status == WAIT_SHARE_TIMEOUT)
+      if (requestingTask->status == WAIT_SEND_TIMEOUT)
       {
         CancelTask(requestingTask);
         nPrintf("%s%sCanceling task %s because it reached it's timeout\n",
@@ -172,7 +164,7 @@ void nShare(char *data)
   nPrintf("%s%sPending requests: %d\n", DEBUG, context, pendingRequests);
   while (pendingRequests)
   {
-    nCurrentTask()->status = WAIT_RELEASE;
+    nCurrentTask()->status = WAIT_REPLY;
     nPrintf("%s%sWaiting for all requests to release the data\n", DEBUG, context);
     ResumeNextReadyTask();
   }
