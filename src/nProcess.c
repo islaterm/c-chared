@@ -368,7 +368,7 @@ static nTask MakeTask(int stack_size)
   nTask newTask = (nTask)nMalloc(sizeof(*newTask));
   newTask->status = READY;
   newTask->taskname = NULL;
-  newTask->wait_task = NULL; /* Ninguna tarea ha hecho nAbsorb */
+  newTask->waitTask = NULL; /* Ninguna tarea ha hecho nAbsorb */
   newTask->send_queue = MakeQueue();
   newTask->requestQueue = MakeFifoQueue();
   newTask->stack = stack_size == 0 ? NULL : (SP)nMalloc(stack_size);
@@ -426,10 +426,10 @@ void nExitTask(int rc)
   /* La tarea que estaba en espera de este nExitTask se coloca en la
      * cola de tareas ready.
      */
-  if (current_task->wait_task != NULL)
+  if (current_task->waitTask != NULL)
   {
-    current_task->wait_task->status = READY;
-    PushTask(ready_queue, current_task->wait_task);
+    current_task->waitTask->status = READY;
+    PushTask(ready_queue, current_task->waitTask);
   }
 
   current_task->status = ZOMBIE; /* Consultado por nWaitTask */
@@ -449,11 +449,11 @@ int nWaitTask(nTask task)
 
   START_CRITICAL();
 
-  if (task->wait_task != NULL)
+  if (task->waitTask != NULL)
     nFatalError("nWaitTask",
                 "Sos tareas no pueden esperar la misma tarea\n");
 
-  task->wait_task = current_task;
+  task->waitTask = current_task;
 
   /* Si task no se ha suicidado todavia, hay que esperar */
   if (task->status != ZOMBIE)
@@ -464,11 +464,11 @@ int nWaitTask(nTask task)
 
   if (task->taskname != NULL)
     nFree(task->taskname);
-  if (!EmptyFifoQueue(task->send_queue))
+  if (!EmptyQueue(task->send_queue))
     nFatalError("nWaitTask",
                 "Hay %d tarea(s) en la cola de la tarea moribunda\n",
-                LengthFifoQueue(task->send_queue));
-  DestroyFifoQueue(task->send_queue);
+                QueueLength(task->send_queue));
+  DestroyQueue(task->send_queue);
   nFree(task->stack); /* Libera los recursos de la tarea */
   rc = task->rc;
   nFree(task);

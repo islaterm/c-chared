@@ -2,7 +2,7 @@
  * Implementation of a concurrent sharing system using low level synchronization tools.
  * 
  * @author Ignacio Slater Muñoz
- * @version 1.0b14
+ * @version 1.0b15
  * @since 1.0
  */
 #include <stdarg.h>
@@ -140,8 +140,7 @@ void nShare(char *data)
   nPrintf("\n%s%sEntered critical section.\n", DEBUG, context);
   nPrintf("%s%s%s started sharing %X\n", DEBUG, context, nGetTaskName(), data);
   nPrintf("%s%sLooking for requests\n", DEBUG, context);
-  // FIXME: It freezes here
-  while (!EmptyQueue(nCurrentTask()->requestQueue))
+  while (!EmptyFifoQueue(nCurrentTask()->requestQueue))
   {
     nTask requestingTask = GetObj(nCurrentTask()->requestQueue);
     if (requestingTask->status == WAIT_SEND || requestingTask->status == WAIT_SEND_TIMEOUT)

@@ -23,7 +23,7 @@ typedef struct Task /* Descriptor de una tarea */
 
   /* Para el nExitTask y nWaitTask */
   int  rc;                  /* codigo de retorno de la tarea  */
-  struct Task *wait_task;   /* La tarea que espera un nExitTask */
+  struct Task *waitTask;   /* La tarea que espera un nExitTask */
 
   struct Queue *send_queue; /* cola de emisores en espera de esta tarea */
   /* Para nSend, nReceive y nReply */
