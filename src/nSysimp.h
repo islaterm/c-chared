@@ -1,4 +1,8 @@
+#ifndef _NSYSIMP_H_
+#define _NSYSIMP_H_
+
 #include <signal.h>
+#include "fifoqueues.h"
 
 /*************************************************************
  * nProcess.c
@@ -21,8 +25,9 @@ typedef struct Task /* Descriptor de una tarea */
   int  rc;                  /* codigo de retorno de la tarea  */
   struct Task *wait_task;   /* La tarea que espera un nExitTask */
 
-  /* Para nSend, nReceive y nReply */
   struct Queue *send_queue; /* cola de emisores en espera de esta tarea */
+  /* Para nSend, nReceive y nReply */
+  FifoQueue requestQueue;
   union { void *msg; int rc; } send; /* sirve para intercambio de info */
   int wake_time;            /* Tiempo maximo de espera de un nReceive */
 }
@@ -202,3 +207,5 @@ int Gprintf();
 /*************************************************************
  * Las primitivas de nSystem
  *************************************************************/
+
+#endif

@@ -8,17 +8,20 @@
 #include <stdarg.h>
 #include "nSysimp.h"
 #include <nSystem.h>
-#include "fifoqueues.h"
 
+#pragma region : CONSTANTS
 static const char
     *DEBUG = "DEBUG   ",
     *ERROR = "ERROR   ";
+#pragma endregion
 
-static size_t pendingRequests = 0;
+#pragma region : LOCAL VARIABLES
+static size_t pendingRequests = 0; // Number of requests to be answered
 static int
-    nShareCounter = 0,
-    nReleaseCounter = 0,
-    nRequestCounter = 0;
+    nShareCounter = 0,   // Id for the current share task
+    nReleaseCounter = 0, // Id for the current release task
+    nRequestCounter = 0; // Id for the current request task
+#pragma endregion
 
 /**
  * Requests data from a task.
@@ -35,10 +38,10 @@ char *nRequest(nTask t, int timeout)
   const char *context = "[nRequest]   ";
   START_CRITICAL();
   nPrintf("%s%sEntered critical section.\n", DEBUG, context);
-  
+
   nSetTaskName("REQUEST %d", nRequestCounter++);
   pendingRequests++;
-  
+
   nPrintf("%s%sPending requests: %d\n", DEBUG, context, pendingRequests);
 
   if (t->status == WAIT_REPLY)
@@ -57,9 +60,7 @@ char *nRequest(nTask t, int timeout)
       nCurrentTask()->status = WAIT_SEND_TIMEOUT;
       ProgramTask(timeout);
       nPrintf("%s%s%s started a request with timeout: %d\n", DEBUG, context, nGetTaskName(),
-              timeout);
-      // FIXME: Current task msg is not updated by nShare
-    }
+              timeout);    }
     else
     {
       nCurrentTask()->status = WAIT_SEND;
@@ -67,10 +68,10 @@ char *nRequest(nTask t, int timeout)
               nGetTaskName());
       nPrintf("%s%s%s's status: %d\n", DEBUG, context, nGetTaskName(),
               nCurrentTask()->status);
-      PushTask(t->send_queue, nCurrentTask());
-      nPrintf("%s%sAdded %s to %s's send queue\n", DEBUG, context, nGetTaskName(),
-              t->taskname);
     }
+    PushObj(t->requestQueue, nCurrentTask());
+    nPrintf("%s%sAdded %s to %s's send queue\n", DEBUG, context, nGetTaskName(),
+            t->taskname);
     // nPrintf("%s%s%s's status: %d\n", DEBUG, context, nGetTaskName(),
     //         nCurrentTask()->status);
     // nPrintf("%s%sNext task: %s\n", DEBUG, context, nGetTaskName());
@@ -139,9 +140,10 @@ void nShare(char *data)
   nPrintf("\n%s%sEntered critical section.\n", DEBUG, context);
   nPrintf("%s%s%s started sharing %X\n", DEBUG, context, nGetTaskName(), data);
   nPrintf("%s%sLooking for requests\n", DEBUG, context);
-  while (!EmptyQueue(nCurrentTask()->send_queue))
+  // FIXME: It freezes here
+  while (!EmptyQueue(nCurrentTask()->requestQueue))
   {
-    nTask requestingTask = GetTask(nCurrentTask()->send_queue);
+    nTask requestingTask = GetObj(nCurrentTask()->requestQueue);
     if (requestingTask->status == WAIT_SEND || requestingTask->status == WAIT_SEND_TIMEOUT)
     {
       nCurrentTask()->status = nPrintf("%s%sAnswering request for task %s\n", DEBUG,

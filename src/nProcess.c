@@ -7,43 +7,43 @@
 static nTask MakeTask(int stack_size);
 
 static void VtimerHandler();
-      /* El handler de interrupciones del timer virtual */
+/* El handler de interrupciones del timer virtual */
 
 /*************************************************************
  * El prologo y el epilogo
  *************************************************************/
 
-Queue ready_queue;                /* Las tareas ready */
-nTask current_task;               /* La tarea running */
+Queue ready_queue;  /* Las tareas ready */
+nTask current_task; /* La tarea running */
 
-int cpu_status=RUNNING;           /* Estado del procesador */
+int cpu_status = RUNNING; /* Estado del procesador */
 
-static nTask main_task;           /* La tarea que corre nMain */
+static nTask main_task; /* La tarea que corre nMain */
 
-static int context_changes=0;     /* nro de cambios de contexto implicitos */
-static double rq_sum_length= 0.0;
-static int rq_n=0;
+static int context_changes = 0; /* nro de cambios de contexto implicitos */
+static double rq_sum_length = 0.0;
+static int rq_n = 0;
 
 void ProcessInit()
 {
-  ready_queue= MakeQueue();
-  main_task= current_task= MakeTask(0);
-    /* el nMain usa el stack del proceso Unix */
+  ready_queue = MakeQueue();
+  main_task = current_task = MakeTask(0);
+  /* el nMain usa el stack del proceso Unix */
   nSetTaskName("nMain");
 }
 
 void ProcessEnd()
 {
   nFprintf(2, "\nNro. de cambios de contextos implicitos: %d\n",
-               context_changes);
-  if (rq_n!=0)
+           context_changes);
+  if (rq_n != 0)
     nFprintf(2, "Largo promedio de la cola ``ready'': %f\n",
-                rq_sum_length/rq_n);
+             rq_sum_length / rq_n);
 
-  if ( ! EmptyQueue(ready_queue) )
+  if (!EmptyQueue(ready_queue))
     nFprintf(2, "\nTareas que quedaron ``ready'':\n");
 
-  while ( ! EmptyQueue(ready_queue) )
+  while (!EmptyQueue(ready_queue))
     DescribeTask(GetTask(ready_queue));
 }
 
@@ -61,7 +61,7 @@ int nGetQueueLength()
 {
   int len;
   START_CRITICAL();
-    len= QueueLength(ready_queue);
+  len = QueueLength(ready_queue);
   END_CRITICAL();
   return len;
 }
@@ -70,7 +70,7 @@ int nGetQueueLength()
  * Definicion de parametros para las tareas
  *************************************************************/
 
-static int current_stack_size= 8192;  /* Taman~o de un stack */
+static int current_stack_size = 8192; /* Taman~o de un stack */
 
 /*
  * Define el taman~o del stack de una tarea.
@@ -78,9 +78,9 @@ static int current_stack_size= 8192;  /* Taman~o de un stack */
 
 int nSetStackSize(int size)
 {
-  int old_stack_size= current_stack_size;
-  current_stack_size= size; /* empieza a correr para las nuevas tareas */
-                            /* que se creen */
+  int old_stack_size = current_stack_size;
+  current_stack_size = size; /* empieza a correr para las nuevas tareas */
+                             /* que se creen */
 
   return old_stack_size;
 }
@@ -92,14 +92,14 @@ int nSetStackSize(int size)
  * Esta es la situacion inicial para hacer el debugging mas facil.
  */
 
-int current_slice=0;
+int current_slice = 0;
 
 void nSetTimeSlice(int slice)
 {
   START_CRITICAL();
-    current_slice= slice;
-    SetAlarm(VIRTUALTIMER, current_slice , VtimerHandler);
-    /* Si current_slice==0, el timer deja de interrumpir */
+  current_slice = slice;
+  SetAlarm(VIRTUALTIMER, current_slice, VtimerHandler);
+  /* Si current_slice==0, el timer deja de interrumpir */
   END_CRITICAL();
 }
 
@@ -137,20 +137,20 @@ void ResumeNextReadyTask()
      * una operacion de E/S realizable en algun descriptor de E/S, y;
      * el usuario presiona control-C (que mata el proceso).
      */
-    if (current_task->status==READY) /* Debugging */
+    if (current_task->status == READY) /* Debugging */
       nFatalError("ResumeNextReadyTask",
                   "Por que' la tarea que corria estaba ``ready''?\n");
 
-    cpu_status= WAIT_INTERRUPT;
+    cpu_status = WAIT_INTERRUPT;
 
     WaitSignal(); /* Se espera una de la interrupciones mencionadas */
 
-    cpu_status= RUNNING;
+    cpu_status = RUNNING;
   }
 
   /* Ahora si' hay tareas ready */
-  next_task= GetTask(ready_queue);
-  this_task= current_task;
+  next_task = GetTask(ready_queue);
+  this_task = current_task;
 
   /* Debugging: Se chequea la integridad de los stacks */
   CheckStack(this_task->stack);
@@ -159,7 +159,7 @@ void ResumeNextReadyTask()
   /* EL CAMBIO DE CONTEXTO: */
   ChangeContext(this_task, next_task);
 
-  current_task= this_task;
+  current_task = this_task;
   /* Ahora ``this_task'' vuelve a ser la ``current_task'' */
 
   /*
@@ -216,11 +216,12 @@ void PreemptTask()
 {
   StartHandler(); /* Debugging */
 
-  if (cpu_status==RUNNING && current_slice!=0)
+  if (cpu_status == RUNNING && current_slice != 0)
   {
     context_changes++;
     PushTask(ready_queue, current_task);
-} }
+  }
+}
 
 /*
  * Salida de un Handler ``preemptive'':
@@ -234,7 +235,7 @@ void PreemptTask()
 
 void ResumePreemptive()
 {
-  if (cpu_status==RUNNING && current_slice!=0)
+  if (cpu_status == RUNNING && current_slice != 0)
     ResumeNextReadyTask();
 
   EndHandler(); /* Debugging */
@@ -258,13 +259,13 @@ static void VtimerHandler()
   rq_sum_length += QueueLength(ready_queue);
   rq_n++;
 
-  if (cpu_status==RUNNING)
+  if (cpu_status == RUNNING)
   {
     context_changes++; /* solo para saber cuantos cambios implicitos hubo */
 
     PutTask(ready_queue, current_task); /* Al final de la ``ready_queue'' */
-    ResumeNextReadyTask(); /* Este procedimiento retorna cuando a esta */
-                             /* tarea le toque una nueva tajada de tiempo  */
+    ResumeNextReadyTask();              /* Este procedimiento retorna cuando a esta */
+                                        /* tarea le toque una nueva tajada de tiempo  */
   }
 
   EndHandler(); /* Debugging */
@@ -284,17 +285,16 @@ typedef struct InfoEmit
 {
   va_list ap;
   int (*proc)();
-}
-  InfoEmit;
+} InfoEmit;
 
 static void TaskInit(InfoEmit *info);
 
-nTask nEmitTask( int (*proc)(), ... )
+nTask nEmitTask(int (*proc)(), ...)
 {
   /* (un procedimiento puede declarar mas argumentos que la cantidad
    * de argumentos con que es llamado)
    */
-  nTask new_task, this_task;
+  nTask newTask, this_task;
   InfoEmit info;
   va_list ap;
 
@@ -303,54 +303,54 @@ nTask nEmitTask( int (*proc)(), ... )
 
   START_CRITICAL();
 
-    this_task= current_task;
+  this_task = current_task;
 
-    /* Se crea el descriptor de la nueva tarea */
-    new_task= MakeTask(current_stack_size);
+  /* Se crea el descriptor de la nueva tarea */
+  newTask = MakeTask(current_stack_size);
 
-    /* Debugging: chequea el desborde del stack */
-    MarkStack(new_task->stack);
+  /* Debugging: chequea el desborde del stack */
+  MarkStack(newTask->stack);
 
-    /* Modificación para AMD64. Por Francisco Cifuentes */
-    va_copy(info.ap, ap);
-    info.proc= proc;
+  /* Modificaciï¿½n para AMD64. Por Francisco Cifuentes */
+  va_copy(info.ap, ap);
+  info.proc = proc;
 
-    /* La tarea actual la colocamos primera en la "ready_queue" */
-    PushTask(ready_queue, this_task);
+  /* La tarea actual la colocamos primera en la "ready_queue" */
+  PushTask(ready_queue, this_task);
 
-    /***** EL CAMBIO DE CONTEXTO ********/
+  /***** EL CAMBIO DE CONTEXTO ********/
 
-    current_task= new_task; /* No sabemos hacerlo en ``TaskInit'' */
+  current_task = newTask; /* No sabemos hacerlo en ``TaskInit'' */
 
-    CallInNewContext(this_task, new_task, TaskInit, (void *)&info );
+  CallInNewContext(this_task, newTask, TaskInit, (void *)&info);
 
-    current_task= this_task;
+  current_task = this_task;
 
-    va_end(ap);
+  va_end(ap);
 
   END_CRITICAL();
 
-  return new_task;
+  return newTask;
 }
 
-static void TaskInit( InfoEmit *pinfo )
+static void TaskInit(InfoEmit *pinfo)
 {
   int rc;
-  int (*proc)()= pinfo->proc;
-  long  a0= va_arg(pinfo->ap, long);
-  long  a1= va_arg(pinfo->ap, long);
-  long  a2= va_arg(pinfo->ap, long);
-  long  a3= va_arg(pinfo->ap, long);
-  long  a4= va_arg(pinfo->ap, long);
-  long  a5= va_arg(pinfo->ap, long);
-  long  a6= va_arg(pinfo->ap, long);
-  long  a7= va_arg(pinfo->ap, long);
-  long  a8= va_arg(pinfo->ap, long);
-  long  a9= va_arg(pinfo->ap, long);
-  long a10= va_arg(pinfo->ap, long);
-  long a11= va_arg(pinfo->ap, long);
-  long a12= va_arg(pinfo->ap, long);
-  long a13= va_arg(pinfo->ap, long);
+  int (*proc)() = pinfo->proc;
+  long a0 = va_arg(pinfo->ap, long);
+  long a1 = va_arg(pinfo->ap, long);
+  long a2 = va_arg(pinfo->ap, long);
+  long a3 = va_arg(pinfo->ap, long);
+  long a4 = va_arg(pinfo->ap, long);
+  long a5 = va_arg(pinfo->ap, long);
+  long a6 = va_arg(pinfo->ap, long);
+  long a7 = va_arg(pinfo->ap, long);
+  long a8 = va_arg(pinfo->ap, long);
+  long a9 = va_arg(pinfo->ap, long);
+  long a10 = va_arg(pinfo->ap, long);
+  long a11 = va_arg(pinfo->ap, long);
+  long a12 = va_arg(pinfo->ap, long);
+  long a13 = va_arg(pinfo->ap, long);
   /* soporta hasta 14 argumentos enteros (o 7 punteros de 64 bits) */
 
   END_CRITICAL();
@@ -359,31 +359,32 @@ static void TaskInit( InfoEmit *pinfo )
    */
 
   /* Llama el procedimiento raiz de la tarea */
-  rc= (*proc)(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13);
+  rc = (*proc)(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13);
   nExitTask(rc);
 }
 
 static nTask MakeTask(int stack_size)
 {
-  nTask new_task= (nTask) nMalloc(sizeof(*new_task));
-  new_task->status= READY;
-  new_task->taskname=NULL;
-  new_task->wait_task= NULL; /* Ninguna tarea ha hecho nAbsorb */
-  new_task->send_queue= MakeQueue();
-  new_task->stack= stack_size==0 ? NULL : (SP) nMalloc(stack_size);
-  new_task->sp= &new_task->stack[stack_size/sizeof(void *)];
+  nTask newTask = (nTask)nMalloc(sizeof(*newTask));
+  newTask->status = READY;
+  newTask->taskname = NULL;
+  newTask->wait_task = NULL; /* Ninguna tarea ha hecho nAbsorb */
+  newTask->send_queue = MakeQueue();
+  newTask->requestQueue = MakeFifoQueue();
+  newTask->stack = stack_size == 0 ? NULL : (SP)nMalloc(stack_size);
+  newTask->sp = &newTask->stack[stack_size / sizeof(void *)];
   /* AMD64 requiere que la pila este alineada a 16 bytes */
-  new_task->sp= (SP)( (long)new_task->sp & ~0xfL );
-  new_task->queue= NULL;
+  newTask->sp = (SP)((long)newTask->sp & ~0xfL);
+  newTask->queue = NULL;
 
-  return new_task;
+  return newTask;
 }
 
 #define MAXNAMESIZE 80
 
 void nSetTaskName(char *format, ...)
 {
-  char taskname[MAXNAMESIZE+1];
+  char taskname[MAXNAMESIZE + 1];
   int len;
   va_list ap;
 
@@ -393,17 +394,18 @@ void nSetTaskName(char *format, ...)
   vsprintf(taskname, format, ap);
   va_end(ap);
 
-  len= strlen(taskname);
-  if (len>=MAXNAMESIZE)
+  len = strlen(taskname);
+  if (len >= MAXNAMESIZE)
     nFatalError("nSetTaskName", "Se excede el taman~o del buffer\n");
 
-  if (current_task->taskname!=NULL) nFree(current_task->taskname);
-  current_task->taskname=strcpy((char*)nMalloc(len+1), taskname);
+  if (current_task->taskname != NULL)
+    nFree(current_task->taskname);
+  current_task->taskname = strcpy((char *)nMalloc(len + 1), taskname);
 
   END_CRITICAL();
 }
 
-char* nGetTaskName()
+char *nGetTaskName()
 {
   return current_task->taskname;
 }
@@ -416,25 +418,25 @@ void nExitTask(int rc)
 {
   START_CRITICAL();
 
-    if (current_task->stack==NULL)
-      nFatalError("nExitTask", "El nMain no debe morir\n");
+  if (current_task->stack == NULL)
+    nFatalError("nExitTask", "El nMain no debe morir\n");
 
-    current_task->rc= rc;        /* el codigo de retorno */
+  current_task->rc = rc; /* el codigo de retorno */
 
-    /* La tarea que estaba en espera de este nExitTask se coloca en la
+  /* La tarea que estaba en espera de este nExitTask se coloca en la
      * cola de tareas ready.
      */
-    if (current_task->wait_task!=NULL)
-    {
-      current_task->wait_task->status= READY;
-      PushTask(ready_queue, current_task->wait_task);
-    }
+  if (current_task->wait_task != NULL)
+  {
+    current_task->wait_task->status = READY;
+    PushTask(ready_queue, current_task->wait_task);
+  }
 
-    current_task->status=ZOMBIE; /* Consultado por nWaitTask */
-    ResumeNextReadyTask();
-    /* (La proxima tarea se encarga de hacer END_CRITICAL) */
+  current_task->status = ZOMBIE; /* Consultado por nWaitTask */
+  ResumeNextReadyTask();
+  /* (La proxima tarea se encarga de hacer END_CRITICAL) */
 
-    /* Todavia no se puede liberar el stack, ya que ResumeNextReadyTask
+  /* Todavia no se puede liberar el stack, ya que ResumeNextReadyTask
      * lo esta usando.  Cuando ResumeNextReadyTask le pasa el control a otra
      * tarea, entonces se podria liberar el stack desde esa tarea.
      * Pero quien sabe que tarea es la que se esta retomando ??
@@ -447,28 +449,29 @@ int nWaitTask(nTask task)
 
   START_CRITICAL();
 
-    if (task->wait_task!=NULL)
-      nFatalError("nWaitTask",
-                  "Sos tareas no pueden esperar la misma tarea\n");
+  if (task->wait_task != NULL)
+    nFatalError("nWaitTask",
+                "Sos tareas no pueden esperar la misma tarea\n");
 
-    task->wait_task= current_task;
+  task->wait_task = current_task;
 
-    /* Si task no se ha suicidado todavia, hay que esperar */
-    if (task->status!=ZOMBIE)
-    {
-      current_task->status= WAIT_TASK;
-      ResumeNextReadyTask(); /* Vuelve cuando task invoco nExitTask */
-    }
+  /* Si task no se ha suicidado todavia, hay que esperar */
+  if (task->status != ZOMBIE)
+  {
+    current_task->status = WAIT_TASK;
+    ResumeNextReadyTask(); /* Vuelve cuando task invoco nExitTask */
+  }
 
-    if (task->taskname!=NULL) nFree(task->taskname);
-    if (! EmptyQueue(task->send_queue))
-       nFatalError("nWaitTask",
-                   "Hay %d tarea(s) en la cola de la tarea moribunda\n",
-                   QueueLength(task->send_queue) );
-    DestroyQueue(task->send_queue);
-    nFree(task->stack); /* Libera los recursos de la tarea */
-    rc= task->rc;
-    nFree(task);
+  if (task->taskname != NULL)
+    nFree(task->taskname);
+  if (!EmptyFifoQueue(task->send_queue))
+    nFatalError("nWaitTask",
+                "Hay %d tarea(s) en la cola de la tarea moribunda\n",
+                LengthFifoQueue(task->send_queue));
+  DestroyFifoQueue(task->send_queue);
+  nFree(task->stack); /* Libera los recursos de la tarea */
+  rc = task->rc;
+  nFree(task);
 
   END_CRITICAL();
 
