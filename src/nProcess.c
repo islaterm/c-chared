@@ -376,6 +376,7 @@ static nTask MakeTask(int stack_size)
   /* AMD64 requiere que la pila este alineada a 16 bytes */
   newTask->sp = (SP)((long)newTask->sp & ~0xfL);
   newTask->queue = NULL;
+  newTask->pendingRequests = 0;
 
   return newTask;
 }

@@ -30,6 +30,7 @@ typedef struct Task /* Descriptor de una tarea */
   FifoQueue requestQueue;
   union { void *msg; int rc; } send; /* sirve para intercambio de info */
   int wake_time;            /* Tiempo maximo de espera de un nReceive */
+  size_t pendingRequests;
 }
   *nTask;
 
